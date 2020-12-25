@@ -7,6 +7,48 @@
 </head>
 <body>
     <div id="app"></div>
-    <script src="index.js"></script>
+    <script src="hdb.js"></script>
+    <script>
+        (async function(){
+            var Hero = await new HDB("Hero", "heroes", { 
+                keyPath: "id",
+                autoIncrement: true,
+                indexes: [
+                    {name: "id", keyPath:"id", options:{ unique: true }},
+                    {name: "name", keyPath:"name", options:{ unique: false }},
+                    {name: "level", keyPath:"level", options:{ unique: false }},
+                ]
+            });
+
+            // await Hero.clearTable();
+            // await seedRun(Hero);
+            // var result  = await Hero.find(3);
+            var result = await Hero.select(["name", "level"]).where({"level >": 4})
+                                .orderBy("id")       
+                                .get();
+            console.log(result);
+        })();
+
+        async function seedRun(queryBuilder){
+            console.log("seed run ...");
+
+            var seed = [
+                {name: "lou", level: 10},
+                {name: "cow", level: 2},
+                {name: "amber", level: 1},
+                {name: "losa", level: 8},
+                {name: "poco", level: 6},
+                {name: "lion", level: 6},
+                {name: "dida", level: 4},
+                {name: "cott", level: 7},
+            ];
+
+            for(let i=0; i<seed.length; i++){
+                await queryBuilder.insert(seed[i]);
+            }
+
+            console.log("done");
+        }
+    </script>
 </body>
 </html>
