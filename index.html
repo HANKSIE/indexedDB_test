@@ -22,9 +22,10 @@
 
             // await Hero.clearTable();
             // await seedRun(Hero);
-            // var result  = await Hero.find(3);
-            var result = await Hero.select(["name", "level"]).where({"level >": 4})
-                                .orderBy("id")       
+
+            var result = await Hero.select(["name", "level"])
+                                .orderBy("id")    
+                                .where({"level >": 4, "name like":"lo"})
                                 .get();
             console.log(result);
         })();

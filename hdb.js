@@ -44,8 +44,6 @@ class HDB {
             orderBy: undefined,
             limit: undefined,
             offset: undefined,
-            like: undefined,
-            having: undefined,
         };
 
         return new Promise((resolve, reject) => {
@@ -354,6 +352,7 @@ class HDB {
             ">=": (value, target) => value >= target,
             "<=": (value, target) => value <= target,
             "=": (value, target) => value === target,
+            "like": (value, target) => String(value).includes(target),
         }
 
         for (const [cond, val] of Object.entries(condition)) {
