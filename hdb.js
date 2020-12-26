@@ -44,6 +44,7 @@ class HDB {
             orderBy: undefined,
             limit: undefined,
             offset: undefined,
+            updatePair: undefined
         };
 
         return new Promise((resolve, reject) => {
@@ -125,14 +126,14 @@ class HDB {
      * @param {String} mode
      * @returns {Promise<Boolean>} 
      */
-    insert(item) {
+    create(item) {
         return new Promise((resolve, reject) => {
             const store = this._getObjectStore(HDB.READWRITE);
       
             const action = store.add(item);
         
-            action.onsuccess = () => {
-                resolve(true);
+            action.onsuccess = async (event) => {
+                resolve(await this.find(event.target.result));
             };
             
             action.onerror = () => {
@@ -197,7 +198,9 @@ class HDB {
     find(pk) {
         return new Promise((resolve, reject) => {
             const store = this._getObjectStore(HDB.READONLY);
-      
+            if(NumberHelper.isNumber(pk)){
+                pk = NumberHelper.isInteger(pk)?Number.parseInt(pk):Number.parseFloat(pk);
+            }
             const action = store.get(pk);
         
             action.onsuccess = () => {
@@ -271,6 +274,26 @@ class HDB {
 
         this._queryInit();
         return collection;
+    }
+
+    async first(){
+        this.Query.limit = 1;
+        return await this.get();
+    }
+
+    async update(pair){
+        this.Query.updatePair = pair;
+        const result = await this._generateResult();
+
+        let isSuccess = true;
+        for(let i=0; i<result.length; i++){
+            if(!await this._updatePromise(result[i])){
+                isSuccess = false;
+            }
+        }
+
+        this._queryInit();
+        return isSuccess;
     }
 
     async delete(){
@@ -394,6 +417,25 @@ class HDB {
         this.Query = {};
     }
 
+    _updatePromise(el){
+        return new Promise((resolve, reject) => {
+            const store = this._getObjectStore(HDB.READWRITE);
+        
+            const updatePair = this.Query.updatePair;
+            const newItem = {...el.item, ...updatePair};
+            
+            const action = store.put(newItem);
+          
+            action.onsuccess = () => {
+                resolve(true);
+            };
+          
+            action.onerror = () => {
+                reject(false);
+            };
+        });
+    }
+
     _deletePromise(pk){
         return new Promise((resolve, reject) => {
             const store = this._getObjectStore(HDB.READWRITE);
@@ -410,7 +452,6 @@ class HDB {
         });
     }
 }
-
 
 class NumberHelper {
     /**

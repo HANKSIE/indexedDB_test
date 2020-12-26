@@ -23,7 +23,10 @@
             // await Hero.clearTable();
             // await seedRun(Hero);
 
-            var result = await Hero.where({"level >":4}).where({"level <=": 8}).get();
+            var result = await Hero.get();
+            console.log(result);
+            await Hero.where({"id >=": 28}).delete();
+            result = await Hero.get();
             console.log(result);
         })();
 
@@ -42,7 +45,7 @@
             ];
 
             for(let i=0; i<seed.length; i++){
-                await queryBuilder.insert(seed[i]);
+                await queryBuilder.create(seed[i]);
             }
 
             console.log("done");
