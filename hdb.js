@@ -374,7 +374,7 @@ class HDB {
      * @callback handle 
      */
     _iterate(handle) {
-        return new Promise(async resolve => {
+        return new Promise(resolve => {
             const store = this._getObjectStore(HDB.READONLY);
       
             store.openCursor().onsuccess = async (event) => {
