@@ -44,7 +44,8 @@ class HDB {
             orderBy: undefined,
             limit: undefined,
             offset: undefined,
-            updatePair: undefined
+            updatePair: undefined,
+            in: undefined
         };
 
         return new Promise((resolve, reject) => {
@@ -205,7 +206,7 @@ class HDB {
         
             action.onsuccess = () => {
                 this._queryInit();
-                resolve(action.result);
+                resolve(action.result || null);
             };
             
             action.onerror = () => {
@@ -258,17 +259,6 @@ class HDB {
                 const offset = this.Query.offset ||  0;
                 collection = collection.slice(offset, offset + this.Query.limit);
             }
-
-            // select
-            if(this.Query.fields){
-                collection = collection.map(item => {
-                    const newItem = {};
-                    this.Query.fields.forEach(field => {
-                        newItem[field] = item[field];
-                    });
-                    return newItem;
-                });
-            }
     
         }
 
@@ -278,10 +268,21 @@ class HDB {
 
     async first(){
         this.Query.limit = 1;
-        return await this.get();
+        const result = await this.get();
+        return result.length === 0?null:result[0];
     }
 
+    /**
+     * 
+     * @param {Object} pair key-value pair you want changed
+     * @returns {Boolean}
+     */
     async update(pair){
+        
+        if(this.Query.fields){
+            throw new Error("cannot use 'select' when updating");
+        }
+
         this.Query.updatePair = pair;
         const result = await this._generateResult();
 
@@ -297,6 +298,11 @@ class HDB {
     }
 
     async delete(){
+
+        if(this.Query.fields){
+            throw new Error("cannot use 'select' when deleting");
+        }
+
         const result = await this._generateResult();
 
         let isSuccess = true;
@@ -328,14 +334,23 @@ class HDB {
         const collection = [];
 
         await this._iterate(cursor => {
-            const item = cursor.value;
-            item[cursor.source.keyPath] = cursor.primaryKey;
+            let item = {};
+            
+            // select
+            if(this.Query.fields){
+                this.Query.fields.forEach(field => {
+                    item[field] = cursor.value[field];
+                });
+            }else{
+                item = cursor.value;
+            }
+
             if(condition){
                 if (this._valid(cursor.value, condition)) {
-                    collection.push({ pk: cursor.primaryKey,  item: cursor.value});
+                    collection.push({ pk: cursor.primaryKey,  item});
                 }
             }else{
-                collection.push({ pk: cursor.primaryKey,  item: cursor.value});
+                collection.push({ pk: cursor.primaryKey,  item});
             }
         });
 
@@ -419,11 +434,12 @@ class HDB {
 
     _updatePromise(el){
         return new Promise((resolve, reject) => {
+            
             const store = this._getObjectStore(HDB.READWRITE);
         
             const updatePair = this.Query.updatePair;
             const newItem = {...el.item, ...updatePair};
-            
+
             const action = store.put(newItem);
           
             action.onsuccess = () => {
