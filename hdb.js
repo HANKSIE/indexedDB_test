@@ -186,7 +186,10 @@ class HDB {
             const store = this._getObjectStore(HDB.READONLY);
             
             pk = NumberHelper.parse(pk);
-
+            if(isNaN(pk)){
+                resolve(null);
+            }
+            
             const action = store.get(pk);
         
             action.onsuccess = () => {
