@@ -198,9 +198,9 @@ class HDB {
     find(pk) {
         return new Promise((resolve, reject) => {
             const store = this._getObjectStore(HDB.READONLY);
-            if(NumberHelper.isNumber(pk)){
-                pk = NumberHelper.isInteger(pk)?Number.parseInt(pk):Number.parseFloat(pk);
-            }
+            
+            pk = NumberHelper.parse(pk);
+
             const action = store.get(pk);
         
             action.onsuccess = () => {
@@ -456,7 +456,7 @@ class HDB {
 class NumberHelper {
     /**
      * 是否為數字
-     * @param {number} val
+     * @param {string|number} val
      * @return {boolean}
      */
     static isNumber(val){
@@ -465,7 +465,7 @@ class NumberHelper {
 
     /**
      * 是否為整數
-     * @param {number} val
+     * @param {string|number} val
      * @return {boolean}
      */
     static isInteger(val){
@@ -478,7 +478,7 @@ class NumberHelper {
 
     /**
      * 是否為大於等於0之整數
-     * @param {number} val
+     * @param {string|number} val
      * @return {boolean}
      */
     static isNatural(val){
@@ -488,12 +488,26 @@ class NumberHelper {
 
         return Number.parseInt(val) >= 0;
     }
+
+    /**
+     * 若是整數字串，回傳整數；若是浮點數字串，回傳浮點數
+     * 
+     * @param {string} val 
+     * @returns {number|NaN}
+     */
+    static parse(val){
+        if(NumberHelper.isNumber(val)){
+            return NumberHelper.isInteger(val)?Number.parseInt(val):Number.parseFloat(val);
+        }
+
+        return Number.NaN;
+    }
 }
 
 class DateHelper {
     /**
      * 是否為合法日期
-     * @param {number} str
+     * @param {string} str
      * @return {boolean}
      */
     static isDate(str){
