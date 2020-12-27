@@ -6,9 +6,6 @@
 
 class HDB {
 
-    /**
-     * @constant
-     */
     static get READONLY() {
         return "readonly";
     }
@@ -27,17 +24,27 @@ class HDB {
 
     /**
      * 
-     * @param {String} database database name
-     * @param {String} table table name
-     * @param {object} config configuration of table
+     * @param {String} database - database name
+     * @param {String} table - table name
+     * @param { {keyPath: String, autoIncrement:String, indexes:Array<{name: String, keyPath:String, options:Object}>} } config - configuration of table
      * 
-     * @returns {HDB | Error} 
+     * @returns {Promise<HDB> | Promise<Error>} 
      */
     constructor(database, table, config = {keyPath: "", autoIncrement: "", indexes: []}){
+        
         this.database = database;
         this.table = table;
         this.config = config;
         this.DB;
+
+        /**
+         * @property {Array.<String>} fields - select fields
+         * @property {Object} condition - key-value pair object
+         * @property {Array<{column: String, orderBy: String}>} orderBy - object in array.
+         * @property {Number} limit
+         * @property {Number} offset
+         * @property {Object} updatePair - key-value pair object
+         */
         this.Query = {
             fields: undefined,
             condition: undefined,
@@ -45,7 +52,6 @@ class HDB {
             limit: undefined,
             offset: undefined,
             updatePair: undefined,
-            in: undefined
         };
 
         return new Promise((resolve, reject) => {
@@ -81,27 +87,6 @@ class HDB {
             };
         });
     }  
-
-    /**
-     * @private
-     * 
-     * @param {String} mode
-     * @returns {IDBObjectStore} 
-     */
-    _getObjectStore(mode) {
-
-        const transaction = this.DB.transaction(this.table, mode);
-        
-        transaction.onabort = () => {
-            throw new Error("transaction aborted..");
-        };
-        
-        transaction.onerror = () => {
-            throw new Error("transaction error..");
-        };
-
-        return transaction.objectStore(this.table);
-    }
 
     /**
      * clear table
@@ -215,6 +200,9 @@ class HDB {
         });
     }
     
+    /**
+     * @returns {Array<Object>}
+     */
     async get(){
         const result = await this._generateResult();
         var collection = result.map(target => {
@@ -266,6 +254,9 @@ class HDB {
         return collection;
     }
 
+    /**
+     * @returns {Object|null}
+     */
     async first(){
         this.Query.limit = 1;
         const result = await this.get();
@@ -273,7 +264,7 @@ class HDB {
     }
 
     /**
-     * 
+     * @throws {String}
      * @param {Object} pair key-value pair you want changed
      * @returns {Boolean}
      */
@@ -297,6 +288,10 @@ class HDB {
         return isSuccess;
     }
 
+    /**
+     * @throws {String}
+     * @returns {Boolean}
+     */
     async delete(){
 
         if(this.Query.fields){
@@ -326,7 +321,29 @@ class HDB {
     }
 
     /**
+     * @private
      * 
+     * @throws {String}
+     * 
+     * @param {String} mode
+     * @returns {IDBObjectStore} 
+     */
+    _getObjectStore(mode) {
+
+        const transaction = this.DB.transaction(this.table, mode);
+        
+        transaction.onabort = () => {
+            throw new Error("transaction aborted..");
+        };
+        
+        transaction.onerror = () => {
+            throw new Error("transaction error..");
+        };
+
+        return transaction.objectStore(this.table);
+    }
+
+    /**
      * @returns {Array<Object>}
      */
     async _generateResult(){
@@ -346,7 +363,7 @@ class HDB {
             }
 
             if(condition){
-                if (this._valid(cursor.value, condition)) {
+                if (this._valid(cursor.value)) {
                     collection.push({ pk: cursor.primaryKey,  item});
                 }
             }else{
@@ -357,6 +374,10 @@ class HDB {
         return collection;
     }
     
+    /**
+     * @private
+     * @param {Object} condition 
+     */
     _formatCondition(condition){
         const convert = {};
         //轉換key格式為"[field][space][op]"
@@ -365,6 +386,11 @@ class HDB {
             
             if(!op){
                 op = "=";
+            }
+
+            // where in
+            if(Array.isArray(val)){
+                op = "in";
             }
 
             const newCond = field + " " + op;
@@ -376,13 +402,13 @@ class HDB {
     }
 
     /**
-     * 
+     * condition validate
+     * @private
      * @param {Object} item 
-     * @param {Object} condition 
      * 
      * @returns {Boolean}
      */
-    _valid(item, condition){
+    _valid(item){
 
         const verify = {
             ">": (value, target) => value > target,
@@ -391,9 +417,10 @@ class HDB {
             "<=": (value, target) => value <= target,
             "=": (value, target) => value === target,
             "like": (value, target) => String(value).includes(target),
+            "in": (value, target) => target.includes(value),
         }
 
-        for (const [cond, val] of Object.entries(condition)) {
+        for (const [cond, val] of Object.entries(this.Query.condition)) {
 
             const [field, op] = cond.split(/\s+/);
 
@@ -408,7 +435,7 @@ class HDB {
 
     /**
      * iterate objectstore
-     * 
+     * @private
      * @callback handle 
      */
     _iterate(handle) {
@@ -428,10 +455,18 @@ class HDB {
         }); 
     }
 
+    /**
+     * initialize Query
+     * @private
+     */
     _queryInit(){
         this.Query = {};
     }
 
+    /**
+     * @private
+     * @param {Object} el 
+     */
     _updatePromise(el){
         return new Promise((resolve, reject) => {
             
@@ -452,10 +487,15 @@ class HDB {
         });
     }
 
+    /**
+     * @private
+     * @param {String|Number} pk 
+     */
     _deletePromise(pk){
         return new Promise((resolve, reject) => {
             const store = this._getObjectStore(HDB.READWRITE);
         
+            pk = NumberHelper.parse(pk);
             const action = store.delete(pk);
           
             action.onsuccess = () => {

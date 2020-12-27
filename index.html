@@ -23,12 +23,10 @@
             // await Hero.clearTable();
             // await seedRun(Hero);
 
-            await Hero.where({"id >": 27}).delete();
-            // result = await Hero.find(26);
             var result = await Hero.get();
-            // console.log(result);
-            // await Hero.where({"id >=": 28}).delete();
-            // result = await Hero.get();
+            console.log(result);
+          
+            result = await Hero.where({"level": [1,8,6]}).take(2).get();
             console.log(result);
         })();
 
